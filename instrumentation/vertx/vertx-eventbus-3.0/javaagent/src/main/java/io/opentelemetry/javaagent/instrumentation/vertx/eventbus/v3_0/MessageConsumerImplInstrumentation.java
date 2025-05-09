@@ -10,14 +10,16 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
+import io.vertx.core.eventbus.Message;
+import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-/**
- * Instrumentation for the MessageConsumerImpl class to trace message reception.
- */
+/** Instrumentation for Vert.x MessageConsumerImpl class. */
 public class MessageConsumerImplInstrumentation implements TypeInstrumentation {
 
   @Override
@@ -32,80 +34,47 @@ public class MessageConsumerImplInstrumentation implements TypeInstrumentation {
 
   @Override
   public void transform(TypeTransformer transformer) {
-    // Instrument the doReceive method which is called when a message is received
+    // Instrument the deliver method which is called when a message is received
     transformer.applyAdviceToMethod(
         isMethod()
-            .and(named("doReceive"))
+            .and(named("deliver"))
             .and(takesArgument(0, named("io.vertx.core.eventbus.Message"))),
-        this.getClass().getName() + "$DoReceiveAdvice");
-
-    // Instrument the dispatch method which is called to dispatch the message to the handler
-    transformer.applyAdviceToMethod(
-        isMethod()
-            .and(named("dispatch"))
-            .and(takesArgument(0, named("io.vertx.core.eventbus.Message")))
-            .and(takesArgument(2, named("io.vertx.core.Handler"))),
-        this.getClass().getName() + "$DispatchAdvice");
+        this.getClass().getName() + "$DeliverAdvice");
   }
 
-  /**
-   * Advice for the doReceive method.
-   */
+  /** Advice for instrumenting MessageConsumerImpl.deliver() method. */
   @SuppressWarnings("unused")
-  public static class DoReceiveAdvice {
-    @net.bytebuddy.asm.Advice.OnMethodEnter(suppress = Throwable.class)
+  public static class DeliverAdvice {
+
+    @Advice.OnMethodEnter(suppress = Throwable.class)
     public static void onEnter(
-        @net.bytebuddy.asm.Advice.Argument(0) Object message,
-        @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
-        @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
-      // Extract the context from the message and start a new span for receiving
-      context = VertxEventBusTracer.startReceive(message);
-      if (context != null) {
-        scope = context.makeCurrent();
-      }
+        @Advice.Argument(0) Message<?> message,
+        @Advice.Local("otelReceiveContext") Context receiveContext,
+        @Advice.Local("otelReceiveScope") Scope receiveScope) {
+      // Create a span for receiving the message
+      receiveContext = VertxEventBusTracer.startReceive(message);
+      receiveScope = receiveContext.makeCurrent();
     }
 
-    @net.bytebuddy.asm.Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void onExit(
-        @net.bytebuddy.asm.Advice.Thrown Throwable throwable,
-        @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
-        @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
-      if (scope != null) {
-        scope.close();
-        VertxEventBusTracer.end(context, throwable);
+        @Advice.Argument(0) Message<?> message,
+        @Advice.Thrown Throwable throwable,
+        @Advice.Local("otelReceiveContext") Context receiveContext,
+        @Advice.Local("otelReceiveScope") Scope receiveScope) {
+      if (receiveScope != null) {
+        receiveScope.close();
+        VertxEventBusTracer.end(receiveContext, throwable);
       }
-    }
-  }
 
-  /**
-   * Advice for the dispatch method.
-   */
-  @SuppressWarnings("unused")
-  public static class DispatchAdvice {
-    @net.bytebuddy.asm.Advice.OnMethodEnter(suppress = Throwable.class)
-    public static void onEnter(
-        @net.bytebuddy.asm.Advice.Argument(0) Object message,
-        @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
-        @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
-      // Extract the context from the message and start a new span for handling
-      context = VertxEventBusTracer.startHandle(message);
-      if (context != null) {
-        scope = context.makeCurrent();
-      }
-    }
-
-    @net.bytebuddy.asm.Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
-    public static void onExit(
-        @net.bytebuddy.asm.Advice.Thrown Throwable throwable,
-        @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
-        @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
-      if (scope != null) {
-        scope.close();
-        VertxEventBusTracer.end(context, throwable);
+      // Create a span for handling the message
+      Context handleContext = VertxEventBusTracer.startHandle(message);
+      Scope handleScope = handleContext.makeCurrent();
+      try {
+        // The handler will be called after this advice, so we don't need to do anything here
+      } finally {
+        handleScope.close();
+        VertxEventBusTracer.end(handleContext, throwable);
       }
     }
   }

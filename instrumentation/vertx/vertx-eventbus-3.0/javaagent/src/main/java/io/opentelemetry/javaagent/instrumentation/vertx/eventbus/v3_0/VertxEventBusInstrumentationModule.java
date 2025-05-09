@@ -5,36 +5,28 @@
 
 package io.opentelemetry.javaagent.instrumentation.vertx.eventbus.v3_0;
 
-import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static java.util.Arrays.asList;
 
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import java.util.List;
-import net.bytebuddy.matcher.ElementMatcher;
 
-/**
- * This module instruments Vert.x EventBus operations.
- * It traces the flow of messages from sender to consumer.
- */
+/** Instrumentation module for Vert.x EventBus. */
 @AutoService(InstrumentationModule.class)
 public class VertxEventBusInstrumentationModule extends InstrumentationModule {
 
   public VertxEventBusInstrumentationModule() {
-    super("vertx-eventbus", "vertx-eventbus-3.0", "vertx");
+    super("vertx-eventbus", "vertx-eventbus-3.0");
   }
 
   @Override
-  public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
-    // Only apply this instrumentation if Vert.x EventBus is on the classpath
-    return hasClassesNamed("io.vertx.core.eventbus.EventBus");
+  public boolean isHelperClass(String className) {
+    return className.startsWith("io.opentelemetry.javaagent.instrumentation.vertx.eventbus.v3_0.");
   }
 
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
-    return asList(
-        new EventBusImplInstrumentation(),
-        new MessageConsumerImplInstrumentation());
+    return asList(new VertxEventBusInstrumentation());
   }
 }

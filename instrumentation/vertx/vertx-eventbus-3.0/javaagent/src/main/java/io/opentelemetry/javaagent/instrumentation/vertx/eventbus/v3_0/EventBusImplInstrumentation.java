@@ -17,9 +17,7 @@ import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-/**
- * Instrumentation for the EventBusImpl class to trace send and publish operations.
- */
+/** Instrumentation for the EventBusImpl class to trace send and publish operations. */
 public class EventBusImplInstrumentation implements TypeInstrumentation {
 
   @Override
@@ -62,9 +60,7 @@ public class EventBusImplInstrumentation implements TypeInstrumentation {
         this.getClass().getName() + "$RequestAdvice");
   }
 
-  /**
-   * Advice for the send method.
-   */
+  /** Advice for the send method. */
   @SuppressWarnings("unused")
   public static class SendAdvice {
     @net.bytebuddy.asm.Advice.OnMethodEnter(suppress = Throwable.class)
@@ -74,19 +70,21 @@ public class EventBusImplInstrumentation implements TypeInstrumentation {
         @net.bytebuddy.asm.Advice.Argument(2) Object deliveryOptions,
         @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
         @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
+
       context = VertxEventBusTracer.startSend(address, message, "send");
       if (context != null) {
         scope = context.makeCurrent();
       }
     }
 
-    @net.bytebuddy.asm.Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    @net.bytebuddy.asm.Advice.OnMethodExit(
+        onThrowable = Throwable.class,
+        suppress = Throwable.class)
     public static void onExit(
         @net.bytebuddy.asm.Advice.Thrown Throwable throwable,
         @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
         @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
+
       if (scope != null) {
         scope.close();
         VertxEventBusTracer.end(context, throwable);
@@ -94,9 +92,7 @@ public class EventBusImplInstrumentation implements TypeInstrumentation {
     }
   }
 
-  /**
-   * Advice for the publish method.
-   */
+  /** Advice for the publish method. */
   @SuppressWarnings("unused")
   public static class PublishAdvice {
     @net.bytebuddy.asm.Advice.OnMethodEnter(suppress = Throwable.class)
@@ -106,19 +102,21 @@ public class EventBusImplInstrumentation implements TypeInstrumentation {
         @net.bytebuddy.asm.Advice.Argument(2) Object deliveryOptions,
         @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
         @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
+
       context = VertxEventBusTracer.startSend(address, message, "publish");
       if (context != null) {
         scope = context.makeCurrent();
       }
     }
 
-    @net.bytebuddy.asm.Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    @net.bytebuddy.asm.Advice.OnMethodExit(
+        onThrowable = Throwable.class,
+        suppress = Throwable.class)
     public static void onExit(
         @net.bytebuddy.asm.Advice.Thrown Throwable throwable,
         @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
         @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
+
       if (scope != null) {
         scope.close();
         VertxEventBusTracer.end(context, throwable);
@@ -126,9 +124,7 @@ public class EventBusImplInstrumentation implements TypeInstrumentation {
     }
   }
 
-  /**
-   * Advice for the request method.
-   */
+  /** Advice for the request method. */
   @SuppressWarnings("unused")
   public static class RequestAdvice {
     @net.bytebuddy.asm.Advice.OnMethodEnter(suppress = Throwable.class)
@@ -138,19 +134,21 @@ public class EventBusImplInstrumentation implements TypeInstrumentation {
         @net.bytebuddy.asm.Advice.Argument(2) Object deliveryOptions,
         @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
         @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
+
       context = VertxEventBusTracer.startSend(address, message, "request");
       if (context != null) {
         scope = context.makeCurrent();
       }
     }
 
-    @net.bytebuddy.asm.Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    @net.bytebuddy.asm.Advice.OnMethodExit(
+        onThrowable = Throwable.class,
+        suppress = Throwable.class)
     public static void onExit(
         @net.bytebuddy.asm.Advice.Thrown Throwable throwable,
         @net.bytebuddy.asm.Advice.Local("otelContext") io.opentelemetry.context.Context context,
         @net.bytebuddy.asm.Advice.Local("otelScope") io.opentelemetry.context.Scope scope) {
-      
+
       if (scope != null) {
         scope.close();
         VertxEventBusTracer.end(context, throwable);
