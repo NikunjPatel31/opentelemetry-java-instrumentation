@@ -1,5 +1,5 @@
 plugins {
-  id("otel.instrumentation-conventions")
+  id("otel.java-conventions")
 }
 
 subprojects {
@@ -15,6 +15,6 @@ subprojects {
   } else if (projectPath.endsWith("-javaagent")) {
     plugins.apply("otel.javaagent-instrumentation")
   } else {
-    plugins.apply("otel.instrumentation-conventions")
+    plugins.apply("otel.java-conventions")
   }
 }
